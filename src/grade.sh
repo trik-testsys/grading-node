@@ -3,6 +3,7 @@
 SUBMIT_ID=$1
 IMAGE_NAME=$2
 TASK=$3
+GRADE_TIMEOUT=$4
 PROJECT_ROOT="/trik-testsys-grading-node/"
 SUBMIT_FILE="${PROJECT_ROOT}submissions/$SUBMIT_ID.qrs"
 RESULT_DIRECTORY="${PROJECT_ROOT}results/$SUBMIT_ID/"
@@ -17,13 +18,18 @@ if ! [ -f "$GRADING_SCRIPT" ]; then
   exit 1
 fi
 
+if ! [[ $GRADE_TIMEOUT =~ ^[0-9]+$ ]] ; then
+   exit 1
+fi
+
 if [ -d "$RESULT_DIRECTORY" ]; then
   rm -f "$RESULT_DIRECTORY"*
 else
   mkdir "$RESULT_DIRECTORY"
 fi
 
-docker run \
+timeout --signal=SIGKILL "$GRADE_TIMEOUT"
+  docker run \
   --rm \
   --mount type=bind,source="$GRADING_SCRIPT",target="$GRADING_SCRIPT",readonly \
   --mount type=bind,source="$SUBMIT_FILE",target="$SUBMIT_FILE",readonly \

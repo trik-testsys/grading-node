@@ -11,11 +11,6 @@ test_submission(){
   rm -f "$TMP_SUBMIT"
 }
 
-echo "$SUBMIT_FILE"
-echo "$RESULT_DIRECTORY"
-XDG_RUNTIME_DIR=/tmp/runtime-root ./TRIKStudio/trik-studio --version --platform offscreen | grep TRIK | cut -d ' ' -f 4-
-
-
 for field in "${TASK_DIRECTORY}"*;
 do
   FIELD_NAME=$(basename "$field" .xml)
