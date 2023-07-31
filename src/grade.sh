@@ -4,12 +4,20 @@
 SUBMIT_ID=$1
 IMAGE_NAME=$2
 GRADE_TIMEOUT=$3
-PROJECT_ROOT="/trik-testsys-grading-node/"
-SUBMIT_FILE="${PROJECT_ROOT}submissions/$SUBMIT_ID/submission.qrs"
-RESULT_DIRECTORY="${PROJECT_ROOT}results/$SUBMIT_ID/"
-TASK_DIRECTORY="${PROJECT_ROOT}submissions/$SUBMIT_ID/fields"
-GRADING_SCRIPT="${PROJECT_ROOT}src/trik_grade.sh"
+PROJECT_ROOT="/trik-testsys-grading-node"
+SUBMIT_FILE="${PROJECT_ROOT}/submissions/$SUBMIT_ID/submission.qrs"
+RESULT_DIRECTORY="${PROJECT_ROOT}/results/$SUBMIT_ID/"
+TASK_DIRECTORY="${PROJECT_ROOT}/submissions/$SUBMIT_ID/fields"
+GRADING_SCRIPT="${PROJECT_ROOT}/src/trik_grade.sh"
 
+# Overriding options only for simplifying development
+if [ -n "$4" ]; then
+  PROJECT_ROOT="$4"
+  SUBMIT_FILE="${PROJECT_ROOT}/submissions/$SUBMIT_ID/submission.qrs"
+  RESULT_DIRECTORY="${PROJECT_ROOT}/results/$SUBMIT_ID/"
+  TASK_DIRECTORY="${PROJECT_ROOT}/submissions/$SUBMIT_ID/fields"
+  GRADING_SCRIPT="${PROJECT_ROOT}/src/trik_grade.sh"
+fi
 
 if ! [ -f "$SUBMIT_FILE" ]; then
   exit 1

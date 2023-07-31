@@ -1,6 +1,7 @@
 import json
 import os.path
 import subprocess
+import sys
 from typing import List, Tuple
 
 from flask import Flask, request
@@ -16,28 +17,31 @@ class Status:
 
 
 # region Paths
-PROJECT_ROOT = "/trik-testsys-grading-node"
+project_root = "/trik-testsys-grading-node"
+root_overriden = False
 
 
 def get_submission_directory_path(submission_id: int) -> str:
-    return f"{PROJECT_ROOT}/submissions/{submission_id}"
+    return f"{project_root}/submissions/{submission_id}"
 
 
 def get_fields_directory_path(submission_id: int) -> str:
-    return f"{PROJECT_ROOT}/submissions/{submission_id}/fields"
+    return f"{project_root}/submissions/{submission_id}/fields"
 
 
 def get_submission_file_path(submission_id: int) -> str:
-    return f"{PROJECT_ROOT}/submissions/{submission_id}/submission.qrs"
+    return f"{project_root}/submissions/{submission_id}/submission.qrs"
 
 
 def get_result_directory_path(submission_id: int) -> str:
-    return f"{PROJECT_ROOT}/results/{submission_id}"
+    return f"{project_root}/results/{submission_id}"
 
 
 def get_result_file_path(submission_id: int) -> str:
     result_dir_path: str = get_result_directory_path(submission_id)
     return f"{result_dir_path}/result.txt"
+
+
 # endregion
 
 
@@ -64,7 +68,6 @@ def save_result_to_file(submission_id: int, status: str):
 
 
 def prepare_for_testing(submission_id: int):
-
     def delete_file(path):
         if os.path.exists(path):
             os.remove(path)
@@ -159,14 +162,18 @@ class Grader:
         if not self._was_setup:
             return
 
-        process = subprocess.Popen([
+        args = [
             "/bin/bash",
-            f"{PROJECT_ROOT}/src/grade.sh",
+            f"{project_root}/src/grade.sh",
             str(submission_id),
             self._trik_studio_image,
             str(self._timeout)
-        ])
+        ]
 
+        if root_overriden:
+            args.append(project_root)
+
+        process = subprocess.Popen(args)
         self._ran_processes.append((process, submission_id))
 
     def _proceed_processes(self):
@@ -247,3 +254,24 @@ def submission(submission_id):
 
     else:
         return empty_body(HTTPStatus.METHOD_NOT_ALLOWED)
+
+
+if __name__ == "__main__":
+    # Overriding options only for simplifying development
+    port = 8080
+    try:
+        override_port_index = sys.argv.index("--override-port")
+        port = sys.argv[override_port_index + 1]
+    except ValueError:
+        pass
+
+    root = project_root
+    try:
+        override_root_index = sys.argv.index("--override-root")
+        root = sys.argv[override_root_index + 1]
+        root_overriden = True
+    except ValueError:
+        pass
+
+    project_root = root
+    app.run(host="0.0.0.0", port=port)

@@ -66,8 +66,8 @@ setup_environment() {
 setup_system(){
   # Update system and install dependencies
   sudo apt-get update
-  sudo apt-get install ufw docker.io
-  pip install flask
+  sudo apt-get install ufw docker.io python3-pip
+  pip install Flask
   # Make other scripts executable
   chmod +x "$GRADE_SCRIPT_PATH"
   chmod +x "$TRIK_GRADE_SCRIPT_PATH"
@@ -88,7 +88,7 @@ setup_ufw() {
 }
 
 setup_ssh(){
-  # Add grading-server and admin ssh key
+  # Add admin ssh key
   cat "$ADMIN_SSH_KEY_PATH" >> ~/.ssh/authorized_keys
   # Disable password authentication
   sed -i "s/#PasswordAuthentication no/PasswordAuthentication no/" /etc/ssh/sshd_config
