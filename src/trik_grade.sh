@@ -11,9 +11,16 @@ test_submission(){
   rm -f "$TMP_SUBMIT"
 }
 
-for field in "${TASK_DIRECTORY}"*;
+for field in "${TASK_DIRECTORY}/"*;
 do
+  if ! [ -f "$field" ]; then
+    exit 1
+  fi
   FIELD_NAME=$(basename "$field" .xml)
+  echo "$field"
+  echo "$TASK_DIRECTORY"
+  echo "$FIELD_NAME"
+  echo "${RESULT_DIRECTORY}${FIELD_NAME}.json"
   test_submission "$SUBMIT_FILE" "$field" "${RESULT_DIRECTORY}${FIELD_NAME}.json"
 done
 

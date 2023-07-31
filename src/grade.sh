@@ -1,14 +1,15 @@
 #!/bin/bash
 
+
 SUBMIT_ID=$1
 IMAGE_NAME=$2
-TASK=$3
-GRADE_TIMEOUT=$4
+GRADE_TIMEOUT=$3
 PROJECT_ROOT="/trik-testsys-grading-node/"
-SUBMIT_FILE="${PROJECT_ROOT}submissions/$SUBMIT_ID.qrs"
+SUBMIT_FILE="${PROJECT_ROOT}submissions/$SUBMIT_ID/submission.qrs"
 RESULT_DIRECTORY="${PROJECT_ROOT}results/$SUBMIT_ID/"
-TASK_DIRECTORY="${PROJECT_ROOT}tasks/$TASK/"
+TASK_DIRECTORY="${PROJECT_ROOT}submissions/$SUBMIT_ID/fields"
 GRADING_SCRIPT="${PROJECT_ROOT}src/trik_grade.sh"
+
 
 if ! [ -f "$SUBMIT_FILE" ]; then
   exit 1
@@ -19,16 +20,14 @@ if ! [ -f "$GRADING_SCRIPT" ]; then
 fi
 
 if ! [[ $GRADE_TIMEOUT =~ ^[0-9]+$ ]] ; then
-   exit 1
+  exit 1
 fi
 
-if [ -d "$RESULT_DIRECTORY" ]; then
-  rm -f "$RESULT_DIRECTORY"*
-else
-  mkdir "$RESULT_DIRECTORY"
+if ! [ -d "$RESULT_DIRECTORY" ]; then
+  exit 1
 fi
 
-timeout --signal=SIGKILL "$GRADE_TIMEOUT"
+timeout --signal=SIGKILL "$GRADE_TIMEOUT" \
   docker run \
   --rm \
   --mount type=bind,source="$GRADING_SCRIPT",target="$GRADING_SCRIPT",readonly \
