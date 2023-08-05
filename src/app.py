@@ -256,6 +256,11 @@ def submission(submission_id):
         return empty_body(HTTPStatus.METHOD_NOT_ALLOWED)
 
 
+@app.route("/ping", methods=["GET"])
+def ping():
+    return empty_body(HTTPStatus.OK)
+
+
 if __name__ == "__main__":
     # Overriding options only for simplifying development
     port = 8080
