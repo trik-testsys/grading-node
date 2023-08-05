@@ -61,10 +61,13 @@ def save_field_file(submission_id: int, n: int, file: FileStorage):
     file.save(f"{get_fields_directory_path(submission_id)}/field_{n}.xml")
 
 
-def save_result_to_file(submission_id: int, status: str):
+def save_result_to_file(submission_id: int, status: str, trik_result_json_array: List[dict] | None):
     result_path = get_result_file_path(submission_id)
     with open(result_path, "w") as f:
-        f.write(status)
+        f.write(json.dumps({
+            "status": status,
+            "trikResultJsonArray": trik_result_json_array
+        }))
 
 
 def prepare_for_testing(submission_id: int):
@@ -106,9 +109,12 @@ def prepare_for_testing(submission_id: int):
 def get_result(submission_id: int) -> str:
     result = read_all(get_result_file_path(submission_id))
     if result is None:
-        return Status.RUNNING
+        return json.dumps({
+            "status": Status.RUNNING,
+            "trikResultJsonArray": None,
+        })
     else:
-        return result
+        return json.loads(result)
 
 
 def build_result(submission_id: int, exit_code: int):
@@ -118,24 +124,27 @@ def build_result(submission_id: int, exit_code: int):
     result_dir_path = get_result_directory_path(submission_id)
 
     if exit_code == 124:
-        save_result_to_file(submission_id, Status.FAILED)
+        save_result_to_file(submission_id, Status.FAILED, None)
         return
     if exit_code != 0:
-        save_result_to_file(submission_id, Status.ERROR)
+        save_result_to_file(submission_id, Status.ERROR, None)
         return
 
+    trik_result_json_array = []
     for field_result in os.listdir(result_dir_path):
         field_result_path = f"{result_dir_path}/{field_result}"
         result_json_text = read_all(field_result_path)
         assert (result_json_text is not None)
         result_json = json.loads(result_json_text)
+        trik_result_json_array.append(result_json)
 
-        for logs in result_json:
+    for trik_result_json in trik_result_json_array:
+        for logs in trik_result_json:
             if logs["level"] == "error":
-                save_result_to_file(submission_id, Status.FAILED)
+                save_result_to_file(submission_id, Status.FAILED, trik_result_json_array)
                 return
 
-    save_result_to_file(submission_id, Status.ACCEPTED)
+    save_result_to_file(submission_id, Status.ACCEPTED, trik_result_json_array)
 
 
 # endregion
