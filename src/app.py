@@ -2,6 +2,7 @@ import json
 import os.path
 import subprocess
 import sys
+import logging
 from typing import List, Tuple
 
 from flask import Flask, request
@@ -19,6 +20,10 @@ class Status:
 # region Paths
 project_root = "/trik-testsys-grading-node"
 root_overriden = False
+
+
+def get_log_file_path():
+    return f"{project_root}/log.txt"
 
 
 def get_submission_directory_path(submission_id: int) -> str:
@@ -40,8 +45,6 @@ def get_result_directory_path(submission_id: int) -> str:
 def get_result_file_path(submission_id: int) -> str:
     result_dir_path: str = get_result_directory_path(submission_id)
     return f"{result_dir_path}/result.txt"
-
-
 # endregion
 
 
@@ -100,8 +103,6 @@ def prepare_for_testing(submission_id: int):
         fields_dir
     ])
     delete_file(submission_file)
-
-
 # endregion
 
 
@@ -118,7 +119,7 @@ def get_result(submission_id: int) -> str:
 
 
 def build_result(submission_id: int, exit_code: int):
-    if (get_result(submission_id)) != Status.RUNNING:
+    if (json.loads(get_result(submission_id))["status"]) != Status.RUNNING:
         return
 
     result_dir_path = get_result_directory_path(submission_id)
@@ -145,38 +146,23 @@ def build_result(submission_id: int, exit_code: int):
                 return
 
     save_result_to_file(submission_id, Status.ACCEPTED, trik_result_json_array)
-
-
 # endregion
 
 
 class Grader:
 
     def __init__(self):
-        self._was_setup = False
-        self._trik_studio_image = ""
-        self._timeout = 0
         self._ran_processes: List[Tuple[subprocess.Popen, int]] = []
         self._handled_by_current_run = []
 
-    def setup(self, trik_studio_image: str, timeout: int):
-        self._was_setup = True
-        self._trik_studio_image = trik_studio_image
-        self._timeout = timeout
-
-    def was_setup(self) -> bool:
-        return self._was_setup
-
-    def start_grade(self, submission_id: int):
-        if not self._was_setup:
-            return
+    def start_grade(self, submission_id: int, trik_studio_image: str, timeout: int):
 
         args = [
             "/bin/bash",
             f"{project_root}/src/grade.sh",
             str(submission_id),
-            self._trik_studio_image,
-            str(self._timeout)
+            trik_studio_image,
+            str(timeout)
         ]
 
         if root_overriden:
@@ -212,20 +198,6 @@ def empty_body(code):
     return '', code
 
 
-@app.route("/setup", methods=["POST"])
-def setup():
-    trik_studio_image = request.form["trik_studio_image"]
-    if trik_studio_image is None:
-        return empty_body(HTTPStatus.BAD_REQUEST)
-
-    timeout = request.form["timeout"]
-    if timeout is None:
-        return empty_body(HTTPStatus.BAD_REQUEST)
-
-    grader.setup(trik_studio_image, int(timeout))
-    return empty_body(HTTPStatus.CREATED)
-
-
 @app.route("/submission/<submission_id>", methods=["POST", "GET"])
 def submission(submission_id):
     if request.method == "POST":
@@ -238,8 +210,13 @@ def submission(submission_id):
         if fields_count is None or int(fields_count) <= 0:
             return empty_body(HTTPStatus.BAD_REQUEST)
 
-        if not grader.was_setup():
-            return empty_body(HTTPStatus.FAILED_DEPENDENCY)
+        timeout = request.form["timeout"]
+        if timeout is None or int(timeout) <= 0:
+            return empty_body(HTTPStatus.BAD_REQUEST)
+
+        trik_studio_image = request.form["trik_studio_image"]
+        if fields_count is None:
+            return empty_body(HTTPStatus.BAD_REQUEST)
 
         fields_files = []
         for i in range(0, int(fields_count)):
@@ -254,7 +231,11 @@ def submission(submission_id):
         for i, field_file in enumerate(fields_files):
             save_field_file(submission_id, i, field_file)
 
-        grader.start_grade(submission_id)
+        grader.start_grade(
+            submission_id,
+            trik_studio_image,
+            int(timeout)
+        )
 
         return empty_body(HTTPStatus.CREATED)
 
@@ -288,4 +269,9 @@ if __name__ == "__main__":
         pass
 
     project_root = root
+    logging.basicConfig(
+        filename=get_log_file_path(),
+        encoding="utf-8",
+        level=logging.DEBUG
+    )
     app.run(host="0.0.0.0", port=port)
