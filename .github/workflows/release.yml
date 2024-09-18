@@ -22,7 +22,7 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Build image
-        run: docker build
+        run: docker build .
 
       - name: Push tagged image to docker.io
         run: |
