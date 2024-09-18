@@ -1,0 +1,21 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net8.0</TargetFramework>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <Compile Include="Program.fs"/>
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\TestSys.Trik.GradingNode.Grpc\TestSys.Trik.GradingNode.Grpc.fsproj" />
+      <ProjectReference Include="..\TestSys.Trik.GradingNode.Proto\TestSys.Trik.GradingNode.Proto.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="Grpc.Net.Client" Version="2.65.0" />
+    </ItemGroup>
+
+</Project>

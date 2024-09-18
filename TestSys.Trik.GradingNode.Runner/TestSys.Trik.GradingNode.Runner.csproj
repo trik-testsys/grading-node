@@ -1,0 +1,19 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net8.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\TestSys.Trik.GradingNode.Grpc\TestSys.Trik.GradingNode.Grpc.fsproj" />
+      <ProjectReference Include="..\TestSys.Trik.GradingNode.Prelude\TestSys.Trik.GradingNode.Prelude.fsproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="Grpc.AspNetCore" Version="2.65.0" />
+    </ItemGroup>
+
+</Project>

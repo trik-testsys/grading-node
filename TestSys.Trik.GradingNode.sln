@@ -1,0 +1,46 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestSys.Trik.GradingNode.Proto", "TestSys.Trik.GradingNode.Proto\TestSys.Trik.GradingNode.Proto.csproj", "{78AC5DC3-D93B-464F-848C-CC483D92F8FF}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "TestSys.Trik.GradingNode.Grading", "TestSys.Trik.GradingNode.Grading\TestSys.Trik.GradingNode.Grading.fsproj", "{62750445-DA7E-4E30-8175-3719E5EA1BF6}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "TestSys.Trik.GradingNode.Grpc", "TestSys.Trik.GradingNode.Grpc\TestSys.Trik.GradingNode.Grpc.fsproj", "{671C279C-5EBF-457E-822B-096B54C287A4}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "TestSys.Trik.GradingNode.Prelude", "TestSys.Trik.GradingNode.Prelude\TestSys.Trik.GradingNode.Prelude.fsproj", "{C95B48CD-66EA-4071-9786-D0762BA06140}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestSys.Trik.GradingNode.Runner", "TestSys.Trik.GradingNode.Runner\TestSys.Trik.GradingNode.Runner.csproj", "{5CE2A630-4794-4A3C-A323-CC59A7EA3E64}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "TestSys.Trik.GradingNode.TestRunner", "TestSys.Trik.GradingNode.TestRunner\TestSys.Trik.GradingNode.TestRunner.fsproj", "{4D191CB8-1EAE-49CD-8545-8D29FAA10AC4}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{78AC5DC3-D93B-464F-848C-CC483D92F8FF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{78AC5DC3-D93B-464F-848C-CC483D92F8FF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{78AC5DC3-D93B-464F-848C-CC483D92F8FF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{78AC5DC3-D93B-464F-848C-CC483D92F8FF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{62750445-DA7E-4E30-8175-3719E5EA1BF6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{62750445-DA7E-4E30-8175-3719E5EA1BF6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{62750445-DA7E-4E30-8175-3719E5EA1BF6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{62750445-DA7E-4E30-8175-3719E5EA1BF6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{671C279C-5EBF-457E-822B-096B54C287A4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{671C279C-5EBF-457E-822B-096B54C287A4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{671C279C-5EBF-457E-822B-096B54C287A4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{671C279C-5EBF-457E-822B-096B54C287A4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C95B48CD-66EA-4071-9786-D0762BA06140}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C95B48CD-66EA-4071-9786-D0762BA06140}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C95B48CD-66EA-4071-9786-D0762BA06140}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C95B48CD-66EA-4071-9786-D0762BA06140}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5CE2A630-4794-4A3C-A323-CC59A7EA3E64}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5CE2A630-4794-4A3C-A323-CC59A7EA3E64}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5CE2A630-4794-4A3C-A323-CC59A7EA3E64}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5CE2A630-4794-4A3C-A323-CC59A7EA3E64}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4D191CB8-1EAE-49CD-8545-8D29FAA10AC4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4D191CB8-1EAE-49CD-8545-8D29FAA10AC4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4D191CB8-1EAE-49CD-8545-8D29FAA10AC4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4D191CB8-1EAE-49CD-8545-8D29FAA10AC4}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal

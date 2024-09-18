@@ -1,0 +1,21 @@
+name: "Build & Test"
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build_validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: 'true'
+
+      - name: Build
+        run: dotnet build
+
+      - name: Integration tests
+        run: ./run-tests.sh

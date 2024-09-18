@@ -1,0 +1,15 @@
+services:
+
+  grading-node:
+    image: testsystrik/grading-node:latest
+    restart: always
+    environment:
+      - MOUNTED_DIRECTORY=/grading-node-workspace
+      - HOST_DIRECTORY=${PWD}/grading-node-workspace
+      - INNER_TIMEOUT_SECONDS=300
+      - ASPNETCORE_HTTP_PORTS=
+    volumes:
+      - ./grading-node-workspace:/grading-node-workspace
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+      - 8080:8080

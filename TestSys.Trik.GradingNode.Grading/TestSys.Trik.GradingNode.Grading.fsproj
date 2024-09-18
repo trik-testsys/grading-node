@@ -1,0 +1,17 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <Compile Include="Docker.fs" />
+        <Compile Include="Core.fs" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\TestSys.Trik.GradingNode.Prelude\TestSys.Trik.GradingNode.Prelude.fsproj" />
+    </ItemGroup>
+
+</Project>

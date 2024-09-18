@@ -1,0 +1,20 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <Compile Include="Transformers.fs" />
+        <Compile Include="Streams.fs" />
+        <Compile Include="Implementation.fs" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\TestSys.Trik.GradingNode.Grading\TestSys.Trik.GradingNode.Grading.fsproj" />
+      <ProjectReference Include="..\TestSys.Trik.GradingNode.Prelude\TestSys.Trik.GradingNode.Prelude.fsproj" />
+      <ProjectReference Include="..\TestSys.Trik.GradingNode.Proto\TestSys.Trik.GradingNode.Proto.csproj" />
+    </ItemGroup>
+
+</Project>
