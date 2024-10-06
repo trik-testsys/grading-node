@@ -13,7 +13,7 @@ type InMemoryFile = {
     static member FromFile(path: string) =
         {
             name = Path.GetFileName path
-            content = File.ReadAllBytes path 
+            content = File.ReadAllBytes path
         }
 
 [<RequireQualifiedAccess>]
@@ -62,6 +62,7 @@ type FileSystemOptions = {
 type GraderOptions = {
     fsOptions: FileSystemOptions
     innerTimeout: int
+    nodeId: int
 }
 
 let private writeTmpFile dir (f: InMemoryFile) =
@@ -112,7 +113,7 @@ type Grader(options: GraderOptions, submissionData: SubmissionData) =
         createDir fieldsDirectory
         createDir resultsDirectory
         createDir videoDirectory
-        
+
         submissionData.task.fields
         |> Seq.iter (writeTmpFile fieldsDirectory)
 
@@ -147,7 +148,7 @@ type Grader(options: GraderOptions, submissionData: SubmissionData) =
     let getVerdict name = getFile resultsDirectory $"{name}.json"
 
     let dockerOptions =
-        let commonOptions = 
+        let commonOptions =
             [
                 Mount (hostSubmissionFile, "/submission.qrs", Readonly)
                 Mount (hostResultsDirectory, "/results", ReadWrite)
@@ -187,8 +188,8 @@ type Grader(options: GraderOptions, submissionData: SubmissionData) =
                 let msg = $"unexpected files for field[{nameWithoutExtension}]: verdict[{verdict}], video[{video}]"
                 logError submissionId $"getting results failed, {msg}"
                 failwith msg
- 
-        let results = 
+
+        let results =
             submissionData.task.fields
             |> Seq.map (fun x -> getResult x.name)
         logDebug submissionId "successfully finished getting results"
@@ -223,10 +224,10 @@ type Grader(options: GraderOptions, submissionData: SubmissionData) =
                 logDebug submissionId $"TRIKStudio stdout:\n{stdout}"
                 logDebug submissionId $"TRIKStudio stderr:\n{stderr}"
                 if proc.ExitCode = 0 then
-                    let result = 
+                    let result =
                         {
                             id = submissionData.id
-                            result = Ok <| getResults () 
+                            result = Ok <| getResults ()
                         }
                     logInfo submissionId "finished grading, OK"
                     return result

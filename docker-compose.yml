@@ -8,6 +8,7 @@ services:
       - HOST_DIRECTORY=${PWD}/grading-node-workspace
       - INNER_TIMEOUT_SECONDS=300
       - ASPNETCORE_HTTP_PORTS=
+      - NODE_ID=0
     volumes:
       - ./grading-node-workspace:/grading-node-workspace
       - /var/run/docker.sock:/var/run/docker.sock

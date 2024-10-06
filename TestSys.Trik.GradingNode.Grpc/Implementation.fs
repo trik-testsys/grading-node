@@ -16,7 +16,7 @@ type GradingNodeService() =
 
     inherit Proto.GradingNode.GradingNodeBase()
 
-    let mutable connected = false
+    static let mutable connected = false
     let workerThreadsCount = System.Diagnostics.Process.GetCurrentProcess().Threads.Count - 1
     let submissionChannel = System.Threading.Channels.Channel.CreateUnbounded<SubmissionData>()
     let resultChannel = System.Threading.Channels.Channel.CreateUnbounded<GradingResult>()
@@ -30,8 +30,8 @@ type GradingNodeService() =
         {
             fsOptions = fsOptions
             innerTimeout = int <| Configuration.varFromEnv "INNER_TIMEOUT_SECONDS"
+            nodeId = int <| Configuration.varFromEnv "NODE_ID"
         }
-
 
     let startWorkerThread name token =
 
@@ -80,7 +80,7 @@ type GradingNodeService() =
 
         let closeChannel: Tasks.Task<Result<unit,exn>> =
             task {
-                do! submissionChannel.Reader.Completion
+                let! _ = Streams.waitToComplete "Submission channel drain" submissionChannel.Reader
                 let! _ = System.Threading.Tasks.Task.WhenAll(workerTasks)
                 resultChannel.Writer.Complete()
                 return Ok ()
@@ -107,3 +107,12 @@ type GradingNodeService() =
             else
                 logInfo "Connection finished successfully"
         }
+
+        override this.GetStatus(_,_) =
+            task {
+                let response = TestSys.Trik.GradingNode.Proto.Status()
+                response.Capacity <- workerThreadsCount
+                response.Id <- options.nodeId
+                response.Queued <- submissionChannel.Reader.Count
+                return response
+            }

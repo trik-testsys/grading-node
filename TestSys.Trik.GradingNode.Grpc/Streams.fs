@@ -4,8 +4,19 @@ open System.Threading
 open TestSys.Trik.GradingNode.Prelude
 
 let tag = "Stream"
+let logWarning msg = Logging.logWarning tag msg
 let logError msg = Logging.logError tag msg
 let logDebug msg = Logging.logDebug tag msg
+
+let private (|ConnectionAbortedException|_|) (e: exn) =
+    match e with
+    | :? System.IO.IOException as e ->
+        if e.InnerException :? Microsoft.AspNetCore.Connections.ConnectionAbortedException then
+            Some ()
+        else
+            None
+    | _ -> None
+
 
 let redirectStreamToChannel
     (name: string)
@@ -28,8 +39,12 @@ let redirectStreamToChannel
                 logDebug $"Stream to channel redirection[{name}] cancelled"
                 toCh.Complete()
                 return Ok ()
+            | ConnectionAbortedException ->
+                logWarning $"Stream to channel redirection[{name}] aborted"
+                toCh.Complete()
+                return Ok ()
             | e ->
-                logDebug $"Stream to channel redirection[{name}] finished with error: {e}"
+                logError $"Stream to channel redirection[{name}] finished with error: {e}"
                 toCh.Complete(e)
                 return Error e
     }
@@ -64,9 +79,13 @@ let redirectChannelToStream
                 do! closeStream ()
                 logDebug $"Channel to stream redirection[{name}] cancelled"
                 return Ok ()
+            | ConnectionAbortedException ->
+                do! closeStream ()
+                logWarning $"Channel to stream redirection[{name}] aborted"
+                return Ok ()
             | e ->
                 do! closeStream ()
-                logDebug $"Channel to stream redirection[{name}] finished with error: {e}"
+                logError $"Channel to stream redirection[{name}] finished with error: {e}"
                 return Error e
     }
 
@@ -89,7 +108,25 @@ let attachWorkerToChannel
             | :? System.OperationCanceledException ->
                 logDebug $"Worker[{name}] cancelled"
                 return Ok ()
+            | ConnectionAbortedException->
+                logWarning $"Worker[{name}] aborted"
+                return Ok ()
             | e ->
-                logDebug $"Worker[{name}] finished with error: {e}"
+                logError $"Worker[{name}] finished with error: {e}"
+                return Error e
+    }
+
+let waitToComplete (name: string) (fromCh: System.Threading.Channels.ChannelReader<'a>) =
+    task {
+        try
+            logDebug $"Start wait for complete [{name}]"
+            do! fromCh.Completion
+            return Ok ()
+        with
+            | ConnectionAbortedException->
+                logWarning $"Wait for complete [{name}] aborted"
+                return Ok ()
+            | e ->
+                logDebug $"Wait for complete [{name}] finished with error: {e}"
                 return Error e
     }
