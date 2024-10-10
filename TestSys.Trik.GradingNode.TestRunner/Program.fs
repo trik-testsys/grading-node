@@ -50,7 +50,6 @@ let getTestCases (path: string) =
 
     let parseExpected path =
         File.ReadAllLines path
-        |> Seq.skip 1
         |> Seq.choose (fun s ->
             let parts = s.Split(" ")
             match parts with
@@ -87,18 +86,24 @@ let getTestCases (path: string) =
         let submissionNames =
             submissionsPath
             |> Directory.GetFiles
-            |> Seq.map Path.GetFileNameWithoutExtension
+            |> Seq.map Path.GetFileName
 
-        let submissions =
+        let submissionsWithExpected =
             submissionNames
-            |> Seq.map (fun name -> $"{submissionsPath}/{name}.qrs")
-            |> Seq.map Core.InMemoryFile.FromFile
-            |> Seq.map Core.VisualLanguageSubmission
-
-        let expected =
-            submissionNames
-            |> Seq.map (fun name -> $"{expectedPath}/{name}.txt")
-            |> Seq.map parseExpected
+            |> Seq.choose (fun name -> 
+                let path = $"{submissionsPath}/{name}"
+                let file = Core.InMemoryFile.FromFile path
+                let submission = 
+                    match Path.GetExtension path with
+                    | ".qrs" -> Some <| Core.VisualLanguageSubmission file
+                    | ".py" -> None // Core.PythonSubmission file
+                    | ".js" -> None // Core.JavaScriptSubmission file
+                    | x -> failwith $"Unexpected extension: {x}"
+                let expected =
+                    parseExpected $"{expectedPath}/{Path.GetFileNameWithoutExtension name}.txt"
+                submission
+                |> Option.map (fun s -> s, expected)
+            )
 
         let task =
             fieldsPath
@@ -107,7 +112,7 @@ let getTestCases (path: string) =
             |> List.ofSeq
             |> fun x -> { fields = x }: Core.Task
 
-        Seq.zip submissions expected
+        submissionsWithExpected
         |> Seq.map (fun (s, e) -> { task = task; submission = s; expected = e})
 
     ensureExists "tasks" path
