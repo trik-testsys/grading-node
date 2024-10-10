@@ -17,7 +17,7 @@ type GradingNodeService() =
     inherit Proto.GradingNode.GradingNodeBase()
 
     static let mutable connected = false
-    let workerThreadsCount = System.Diagnostics.Process.GetCurrentProcess().Threads.Count - 1
+    let workerThreadsCount = int <| Configuration.varFromEnv "WORKERS_COUNT"
     let submissionChannel = System.Threading.Channels.Channel.CreateUnbounded<SubmissionData>()
     let resultChannel = System.Threading.Channels.Channel.CreateUnbounded<GradingResult>()
 
