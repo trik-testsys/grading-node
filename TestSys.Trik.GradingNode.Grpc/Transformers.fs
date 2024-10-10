@@ -53,12 +53,24 @@ type Proto.VisualLanguageSubmission with
     member this.ToSubmission () =
         VisualLanguageSubmission (this.File.ToInMemoryFile())
 
+type Proto.PythonSubmission with
+
+    member this.ToSubmission () =
+        PythonSubmission (this.File.ToInMemoryFile())
+
+type Proto.JavaScriptSubmission with
+
+    member this.ToSubmission () =
+        JavaScriptSubmission (this.File.ToInMemoryFile())
+
 type Proto.Submission with
 
     member this.ToSubmissionData() =
         let submission =
             match this.SubmissionCase with
             | Proto.Submission.SubmissionOneofCase.VisualLanguageSubmission -> this.VisualLanguageSubmission.ToSubmission()
+            | Proto.Submission.SubmissionOneofCase.PythonSubmission -> this.PythonSubmission.ToSubmission()
+            | Proto.Submission.SubmissionOneofCase.JavascriptSubmission -> this.JavascriptSubmission.ToSubmission()
             | _ -> failwith "Unexpected value"
         {
             id = this.Id
@@ -79,6 +91,14 @@ type Proto.Submission with
             let submission = Proto.VisualLanguageSubmission ()
             submission.File <- Proto.File.FromInMemoryFile file
             result.VisualLanguageSubmission <- submission
+        | PythonSubmission file ->
+            let submission = Proto.PythonSubmission ()
+            submission.File <- Proto.File.FromInMemoryFile file
+            result.PythonSubmission <- submission
+        | JavaScriptSubmission file ->
+            let submission = Proto.JavaScriptSubmission ()
+            submission.File <- Proto.File.FromInMemoryFile file
+            result.JavascriptSubmission <- submission
 
         result
 

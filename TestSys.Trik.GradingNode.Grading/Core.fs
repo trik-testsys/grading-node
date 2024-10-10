@@ -28,6 +28,8 @@ type GradingOptions = {
 
 type Submission =
     | VisualLanguageSubmission of InMemoryFile
+    | PythonSubmission of InMemoryFile
+    | JavaScriptSubmission of InMemoryFile
 
 type SubmissionData = {
     id: int
@@ -95,6 +97,12 @@ type Grader(options: GraderOptions, submissionData: SubmissionData) =
         p.WaitForExit()
         logDebug submissionId "finished stopping container"
 
+    let mode =
+        match submissionData.submission with
+        | VisualLanguageSubmission _ -> "qrs"
+        | PythonSubmission _ -> "py"
+        | JavaScriptSubmission _ -> "js"
+
     let fromRoots f =
         f rootDirectory, f rootHostDirectory
     let fieldsDirectory, hostFieldsDirectory =
@@ -104,7 +112,7 @@ type Grader(options: GraderOptions, submissionData: SubmissionData) =
     let videoDirectory, hostVideoDirectory =
         fromRoots <| fun root -> $"{root}/video"
     let submissionFile, hostSubmissionFile =
-        fromRoots <| fun root -> $"{root}/submission.qrs"
+        fromRoots <| fun root -> $"{root}/submission.{mode}"
 
     let initFileSystem () =
         logDebug submissionId "start initializing file system"
@@ -118,8 +126,11 @@ type Grader(options: GraderOptions, submissionData: SubmissionData) =
         |> Seq.iter (writeTmpFile fieldsDirectory)
 
         match submissionData.submission with
-        | VisualLanguageSubmission inMemoryFile ->
+        | VisualLanguageSubmission inMemoryFile
+        | PythonSubmission inMemoryFile
+        | JavaScriptSubmission inMemoryFile ->
             File.WriteAllBytes(submissionFile, inMemoryFile.content)
+
         logDebug submissionId "finished initializing file system"
 
     let clearFileSystem () =
@@ -150,7 +161,8 @@ type Grader(options: GraderOptions, submissionData: SubmissionData) =
     let dockerOptions =
         let commonOptions =
             [
-                Mount (hostSubmissionFile, "/submission.qrs", Readonly)
+                EnvVar ("MODE", mode)
+                Mount (hostSubmissionFile, $"/submission.{mode}", Readonly)
                 Mount (hostResultsDirectory, "/results", ReadWrite)
                 Mount (hostFieldsDirectory, "/fields", Readonly)
             ]
@@ -169,7 +181,7 @@ type Grader(options: GraderOptions, submissionData: SubmissionData) =
             let verdict = getVerdict nameWithoutExtension
             let video = getVideo nameWithoutExtension
 
-            logDebug submissionId $"got results for field[{nameWithoutExtension}]: : verdict[{verdict}], video[{video}]"
+            logDebug submissionId $"got results for field[{nameWithoutExtension}]: : verdict[{verdict.IsSome}], video[{video.IsSome}]"
 
             match verdict, video with
             | Some verdict, Some video when recordVideo ->
@@ -185,7 +197,7 @@ type Grader(options: GraderOptions, submissionData: SubmissionData) =
                     videoFile = None
                 }
             | _ ->
-                let msg = $"unexpected files for field[{nameWithoutExtension}]: verdict[{verdict}], video[{video}]"
+                let msg = $"unexpected files for field[{nameWithoutExtension}]: verdict[{verdict.IsSome}], video[{video.IsSome}]"
                 logError submissionId $"getting results failed, {msg}"
                 failwith msg
 
