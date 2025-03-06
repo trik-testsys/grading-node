@@ -9,7 +9,7 @@ docker compose up -d || exit 1
 sleep 10
 
 export TRIK_STUDIO_IMAGE="testsystrik/trik-studio:release-2023.1-2024-10-10-2.0.0"
-export EXAMPLES_DIRECTORY="./trik-testsys/grading-scripts/examples"
+export EXAMPLES_DIRECTORY="./libs/trik-testsys/grading-scripts/examples"
 if ! dotnet run --project TestSys.Trik.GradingNode.TestRunner; then
     docker compose down
     exit 1
