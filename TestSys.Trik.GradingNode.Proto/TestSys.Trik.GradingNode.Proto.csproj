@@ -18,7 +18,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <Protobuf Include="../trik-testsys-protos/grading_node.proto" GrpcServices="Both" Link="grading_node.proto" />
+        <Protobuf Include="../libs/trik-testsys/protos/grading_node.proto" GrpcServices="Both" Link="grading_node.proto" />
     </ItemGroup>
 
 </Project>
