@@ -1,6 +1,6 @@
 [submodule "protos"]
-	path = protos
+	path = trik-testsys/protos
 	url = https://github.com/trik-testsys/protos.git
 [submodule "grading-scripts"]
-	path = grading-scripts
+	path = trik-testsys/grading-scripts
 	url = https://github.com/trik-testsys/grading-scripts.git
