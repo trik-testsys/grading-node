@@ -12,16 +12,101 @@ let logDebug msg = Logging.logDebug tag msg
 let logInfo msg = Logging.logInfo tag msg
 let logWarning msg = Logging.logInfo tag msg
 
+let private (|ConnectionAbortedException|_|) (e: exn) =
+    match e with
+    | :? System.IO.IOException as e ->
+        if e.InnerException :? Microsoft.AspNetCore.Connections.ConnectionAbortedException then
+            Some ()
+        else
+            None
+    | _ -> None
+
+type Worker (workerId: int, graderOptions: GraderOptions, inputChannel: Channels.ChannelReader<SubmissionData * Channels.ChannelWriter<GradingResult>>, token) =
+
+    let mutable isBusy = false
+
+    let grade data (channel: Channels.ChannelWriter<GradingResult>) =
+        task {
+            let grader = new DockerGrader(graderOptions,data)
+            try
+                try
+                    isBusy <- true
+                    let! result = grader.Grade(token)
+                    do! channel.WriteAsync result
+                with e ->
+                    do! channel.WriteAsync { 
+                        id = data.id 
+                        result = Error <| UnexpectedException e 
+                    }
+            finally
+                isBusy <- false
+                (grader :> System.IDisposable).Dispose()
+        }
+
+    let startGrading () = 
+        task {
+            do! Async.SwitchToNewThread()
+            logInfo $"Start new worker[{workerId}]"
+            while! inputChannel.WaitToReadAsync(token) do
+                let! (data, resultChannel) = inputChannel.ReadAsync(token)
+                do! grade data resultChannel
+        }
+
+    let mutable currentTask = startGrading ()
+
+    member this.WorkerId = workerId
+    member this.IsBusy = isBusy
+    member this.IsAlive = not currentTask.IsCompleted
+    member this.GradingTask = currentTask
+    member this.RestartGrading () = currentTask <- startGrading ()
+
+
+type WorkerPool(threadsCount: int, graderOptions) =
+ 
+    let tokenSource = new CancellationTokenSource()
+    let token = tokenSource.Token
+
+    let inputChannel = Channels.Channel.CreateUnbounded<SubmissionData * Channels.ChannelWriter<GradingResult>>()
+
+
+    let workers = Array.init threadsCount (fun i -> Worker(i, graderOptions, inputChannel.Reader, token))
+
+    let watchWorkers = 
+        task {
+            do! Async.SwitchToNewThread()
+            do! Async.Sleep(5000)
+            for worker in workers do
+                if not worker.IsAlive then
+                    match worker.GradingTask.Status with
+                    | Tasks.TaskStatus.Faulted -> logError $"Worker[{worker.WorkerId}] faulted:\n{worker.GradingTask.Exception}"
+                    | Tasks.TaskStatus.Canceled -> logError $"Worker[{worker.WorkerId}] canceled"
+                    | _ -> logError $"Worker[{worker.WorkerId}] in unexpected state:\n{worker.GradingTask.Status}"
+                    worker.RestartGrading()
+        }
+
+    member this.Grade (data: SubmissionData) =
+        task {
+            let resultChannel = Channels.Channel.CreateUnbounded<GradingResult>()
+            do! inputChannel.Writer.WriteAsync( (data, resultChannel.Writer) )
+            return! resultChannel.Reader.ReadAsync()
+        }
+
+    member this.BusyCount = 
+        workers
+        |> Array.filter (fun w -> w.IsBusy)
+        |> Array.length
+
+    member this.QueuedCount =
+        inputChannel.Reader.Count
+
 type GradingNodeService() =
 
     inherit Proto.GradingNode.GradingNodeBase()
 
-    static let mutable connected = false
-    let workerThreadsCount = int <| Configuration.varFromEnv "WORKERS_COUNT"
-    let submissionChannel = System.Threading.Channels.Channel.CreateUnbounded<SubmissionData>()
-    let resultChannel = System.Threading.Channels.Channel.CreateUnbounded<GradingResult>()
+    static let rnd = new System.Random(42)
+    static let workerThreadsCount = int <| Configuration.varFromEnv "WORKERS_COUNT"
 
-    let options =
+    static let options =
         let fsOptions =
             {
                 mountedDirectory = Configuration.varFromEnv "MOUNTED_DIRECTORY"
@@ -33,79 +118,25 @@ type GradingNodeService() =
             nodeId = int <| Configuration.varFromEnv "NODE_ID"
         }
 
-    let startWorkerThread name token =
 
-        Streams.attachWorkerToChannel name token submissionChannel.Reader (fun x ->
-            task {
-                let grader = new Grader(options, x)
-                try
-                    let! result = grader.Grade(token)
-                    do! resultChannel.Writer.WriteAsync result
-                finally
-                    (grader :> System.IDisposable).Dispose()
-            }
-        )
+    static let workerPool = WorkerPool(workerThreadsCount, options)
+    
+    override this.Grade(request, _) =
 
-    override this.Grade(requestStream, responseStream, _) =
-
-        if connected then
-            logWarning "Connection denied"
-            System.Threading.Tasks.Task.CompletedTask
-        else
-
-        connected <- true
-        logInfo "Connection established"
-
-        let tokenSource = new CancellationTokenSource()
-        let token = tokenSource.Token
-
-        let workerTasks =
-            Array.init workerThreadsCount (fun i -> startWorkerThread $"Worker-{i}" token)
-
-        let resultsRedirect =
-            Streams.redirectChannelToStream
-                "ResultsRedirect"
-                token
-                resultChannel.Reader
-                responseStream
-                Proto.Result.FromGradingResult
-
-        let submissionsRedirect =
-            Streams.redirectStreamToChannel
-                "SubmissionsRedirect"
-                token
-                requestStream
-                submissionChannel.Writer
-                _.ToSubmissionData()
-
-        let closeChannel: Tasks.Task<Result<unit,exn>> =
-            task {
-                let! _ = Streams.waitToComplete "Submission channel drain" submissionChannel.Reader
-                let! _ = System.Threading.Tasks.Task.WhenAll(workerTasks)
-                resultChannel.Writer.Complete()
-                return Ok ()
-            }
-
-        let tasks = Array.append workerTasks [| resultsRedirect; submissionsRedirect; closeChannel |]
-
+        let requestId = rnd.NextInt64(1_000_000_000)
         task {
-            let waitingFor = System.Collections.Generic.HashSet<_>(tasks)
-            let mutable hasErrors = false
-            while waitingFor.Count > 0 do
-                let! completedTask = System.Threading.Tasks.Task.WhenAny(waitingFor)
-                waitingFor.Remove(completedTask) |> ignore
-                let! result = completedTask
-                match result with
-                | Ok () -> ()
-                | Error _ ->
-                    hasErrors <- true
-                    logDebug "Start cancellation"
-                    tokenSource.Cancel()
-            connected <- false
-            if hasErrors then
-                logError "Connection finished with errors"
-            else
-                logInfo "Connection finished successfully"
+            try
+                logInfo $"Start proceeding request[{requestId}]"
+                let submissionData = request.ToSubmissionData()
+                let! gradingResult = workerPool.Grade(submissionData)
+                return Proto.Result.FromGradingResult(gradingResult)
+            with
+                | ConnectionAbortedException as e->
+                    logError $"Grade request[{requestId}] aborted"
+                    return Proto.Result.FromGradingResult({ id = request.Id;  result = Error <| UnexpectedException e})
+                | e ->
+                    logError $"Grade request[{requestId}] finished with errror:\n{e}"
+                    return Proto.Result.FromGradingResult({ id = request.Id;  result = Error <| UnexpectedException e})
         }
 
         override this.GetStatus(_,_) =
@@ -113,6 +144,6 @@ type GradingNodeService() =
                 let response = TestSys.Trik.GradingNode.Proto.Status()
                 response.Capacity <- workerThreadsCount
                 response.Id <- options.nodeId
-                response.Queued <- submissionChannel.Reader.Count
+                response.Queued <- workerPool.QueuedCount
                 return response
             }

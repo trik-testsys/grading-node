@@ -78,15 +78,15 @@ let logDebug submissionId msg = Logging.logDebug tag $"Submission[{submissionId}
 let logInfo submissionId msg = Logging.logInfo tag $"Submission[{submissionId}]: {msg}"
 let logWarning submissionId msg = Logging.logWarning tag $"Submission[{submissionId}]: {msg}"
 
-type Grader(options: GraderOptions, submissionData: SubmissionData) =
+type DockerGrader(options: GraderOptions, submissionData: SubmissionData) =
 
-    static let rnd = Random(42)
+    static let rnd = Random()
 
     let submissionId = submissionData.id
     let fsOptions = options.fsOptions
     let recordVideo = submissionData.options.recordVideo
 
-    let uid = rnd.Next(1000, 100000)
+    let uid = Guid.NewGuid()
     let containerName = $"run-{uid}"
     let rootDirectory, rootHostDirectory =
         $"{fsOptions.mountedDirectory}/tmp-{uid}", $"{fsOptions.hostDirectory}/tmp-{uid}"

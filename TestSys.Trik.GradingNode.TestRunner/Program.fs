@@ -148,17 +148,13 @@ let runTests (testCases: TestCase seq) (client: GradingNode.GradingNodeClient) =
     let fail () =
         failed <- true
 
-    let call = client.Grade()
-
-    let submissionChannel = System.Threading.Channels.Channel.CreateUnbounded<Core.SubmissionData>()
-    let resultsChannel = System.Threading.Channels.Channel.CreateUnbounded<Core.GradingResult>()
-
+    let resultChannel = System.Threading.Channels.Channel.CreateUnbounded<Core.GradingResult>()
     let tokenSource = new CancellationTokenSource()
     let token = tokenSource.Token
 
     let tests = System.Collections.Generic.Dictionary<int, TestCase>()
 
-    let handleResults (result: Core.GradingResult) =
+    let handleResult (result: Core.GradingResult) =
         match tests.TryGetValue(result.id) with
         | true, { task = _; submission = _; expected = expected } ->
             tests.Remove result.id |> ignore
@@ -188,25 +184,6 @@ let runTests (testCases: TestCase seq) (client: GradingNode.GradingNodeClient) =
             fail ()
             logFail result.id "Unexpected submission id"
 
-    let resultsRedirect =
-        Streams.redirectStreamToChannel
-            "ResultsRedirect"
-            token
-            call.ResponseStream
-            resultsChannel.Writer
-            _.ToGradingResult()
-
-    let submissionsRedirect =
-        Streams.redirectChannelToStream
-            "SubmissionRedirect"
-            token
-            submissionChannel.Reader
-            call.RequestStream
-            Submission.FromSubmissionData
-
-    let worker = Streams.attachWorkerToChannel "Worker" token resultsChannel.Reader (fun x ->
-        task { handleResults x }
-    )
 
     let options =
         {
@@ -214,22 +191,29 @@ let runTests (testCases: TestCase seq) (client: GradingNode.GradingNodeClient) =
             dockerImage = Prelude.Configuration.varFromEnv "TRIK_STUDIO_IMAGE"
         }: Core.GradingOptions
 
-    task {
-        let mutable submissionId = 0
-        for testCase in testCases do
-            submissionId <- submissionId + 1
-            let submission =
+    let sendSubmission (submissionId: int) (testCase: TestCase) =
+        task {
+            let data: Core.SubmissionData = 
                 {
                     id = submissionId
                     task = testCase.task
                     options = options
                     submission = testCase.submission 
-                }: Core.SubmissionData
-            tests.Add(submissionId, testCase)
-            do! submissionChannel.Writer.WriteAsync(submission)
-            log $"Sent submission[{submissionId}]"
-        submissionChannel.Writer.Complete()
-        let! _ = System.Threading.Tasks.Task.WhenAll [| worker; resultsRedirect; submissionsRedirect |]
+                }
+            let! result = client.GradeAsync (Proto.Submission.FromSubmissionData(data))
+            handleResult <| result.ToGradingResult()
+        }
+
+    let tasks = 
+        testCases
+        |> Seq.mapi ( fun i testCase -> 
+            tests.Add(i, testCase)
+            log $"Sent submission[{i}]"
+            sendSubmission i testCase
+        )
+
+    task {
+        let! _ = System.Threading.Tasks.Task.WhenAll tasks
         if tests.Count <> 0 then
             for test in tests do
                 log $"No response for submission[{test.Key}]"

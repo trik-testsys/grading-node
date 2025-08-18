@@ -7,7 +7,6 @@
 
     <ItemGroup>
         <Compile Include="Transformers.fs" />
-        <Compile Include="Streams.fs" />
         <Compile Include="Implementation.fs" />
     </ItemGroup>
 
