@@ -1,6 +1,7 @@
 module TestSys.Trik.GradingNode.Grading.Core
 
 open System
+open System.Diagnostics
 open System.IO
 open System.Threading
 open Docker
@@ -93,7 +94,8 @@ type DockerGrader(options: GraderOptions, submissionData: SubmissionData) =
 
     let stopContainer () =
         logDebug submissionId "start stopping container"
-        let p = stopContainer containerName
+        let p = createStopContainerProcess containerName
+        p.Start() |> ignore
         p.WaitForExit()
         logDebug submissionId "finished stopping container"
 
@@ -207,6 +209,16 @@ type DockerGrader(options: GraderOptions, submissionData: SubmissionData) =
         logDebug submissionId "successfully finished getting results"
         results |> List.ofSeq
 
+    let drainProcessOutputToLog prefix (proc: Process) =
+        proc.OutputDataReceived.AddHandler(fun sender args ->
+            if args.Data <> null then
+                logDebug submissionId $"{prefix} stdout: {args.Data}"
+        )
+        proc.ErrorDataReceived.AddHandler(fun sender args ->
+            if args.Data <> null then
+                logDebug submissionId $"{prefix} stderr: {args.Data}"
+        )
+    
     member this.Grade(token: CancellationToken) =
         task {
             logInfo submissionId "start grading"
@@ -229,12 +241,10 @@ type DockerGrader(options: GraderOptions, submissionData: SubmissionData) =
                 }
             try
                 initFileSystem ()
-                let proc = runContainer containerName submissionData.options.dockerImage dockerOptions
+                let proc = createRunContainerProcess containerName submissionData.options.dockerImage dockerOptions
+                drainProcessOutputToLog "TRIKStudio" proc
+                proc.Start() |> ignore
                 do! proc.WaitForExitAsync(token)
-                let stdout = proc.StandardOutput.ReadToEnd()
-                let stderr = proc.StandardError.ReadToEnd()
-                logDebug submissionId $"TRIKStudio stdout:\n{stdout}"
-                logDebug submissionId $"TRIKStudio stderr:\n{stderr}"
                 if proc.ExitCode = 0 then
                     let result =
                         {

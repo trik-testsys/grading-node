@@ -39,13 +39,15 @@ let private executeDockerCommand args =
     info.RedirectStandardOutput <- true
     info.RedirectStandardError <- true
 
-    Process.Start info
+    let proc = new Process()
+    proc.StartInfo <- info
+    proc
 
-let runContainer (containerName: string) (imageName: string) (options: DockerOptions seq) =
+let createRunContainerProcess (containerName: string) (imageName: string) (options: DockerOptions seq) =
     let options = buildOptions options
     let command = $" run --name {containerName} --rm {options} {imageName} /bin/bash /grade.sh"
     executeDockerCommand command
 
-let stopContainer (containerName: string) =
+let createStopContainerProcess (containerName: string) =
     let command = $" stop {containerName}"
     executeDockerCommand command
