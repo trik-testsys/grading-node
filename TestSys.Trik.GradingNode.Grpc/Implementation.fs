@@ -126,7 +126,28 @@ type GradingNodeService() =
         let requestId = rnd.NextInt64(1_000_000_000)
         task {
             try
-                logInfo $"Start proceeding request[{requestId}]"
+                logInfo $"Start proceeding request[{requestId}]:"
+                logInfo $"  Docker image: {request.Options.DockerImage}"
+                logInfo $"  Record video: {request.Options.RecordVideo}"
+                
+                if request.VisualLanguageSubmission <> null then
+                    let file = request.VisualLanguageSubmission.File
+                    logInfo $"  QRS submission: name={file.Name}, size={file.Content.Length}"
+                    
+                if request.JavascriptSubmission <> null then
+                    let file = request.JavascriptSubmission.File
+                    logInfo $"  JS submission: name={file.Name}, size={file.Content.Length}"
+                    
+                if request.PythonSubmission <> null then
+                    let file = request.PythonSubmission.File
+                    logInfo $"  PY Submission: name={file.Name}, size={file.Content.Length}"
+                
+                logInfo $"  Fields: {request.Task.Fields.Count}:"
+                request.Task.Fields
+                |> Seq.iter (fun field ->
+                    logInfo $"    Field: name={field.Name}, size={field.Content.Length}"
+                )
+                
                 let submissionData = request.ToSubmissionData()
                 let! gradingResult = workerPool.Grade(submissionData)
                 return Proto.Result.FromGradingResult(gradingResult)
