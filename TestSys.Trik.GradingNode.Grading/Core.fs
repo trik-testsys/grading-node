@@ -68,16 +68,18 @@ type GraderOptions = {
     nodeId: int
 }
 
-let private writeTmpFile dir (f: InMemoryFile) =
-    assert Directory.Exists(dir)
-    let stream = File.Create($"{dir}/{f.name}")
-    stream.Write(f.content)
-
 let tag = "Grading"
 let logError submissionId msg = Logging.logError tag $"Submission[{submissionId}]: {msg}"
 let logDebug submissionId msg = Logging.logDebug tag $"Submission[{submissionId}]: {msg}"
 let logInfo submissionId msg = Logging.logInfo tag $"Submission[{submissionId}]: {msg}"
 let logWarning submissionId msg = Logging.logWarning tag $"Submission[{submissionId}]: {msg}"
+
+let rec private writeTmpFile dir (f: InMemoryFile) =
+    let path = $"{dir}/{f.name}"
+    Logging.logDebug tag $"Writing tmp file: path={path}, size={f.content.Length}"
+    assert Directory.Exists(dir)
+    let stream = File.Create(path)
+    stream.Write(f.content)
 
 type DockerGrader(options: GraderOptions, submissionData: SubmissionData) =
 
