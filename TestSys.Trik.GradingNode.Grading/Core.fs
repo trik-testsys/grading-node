@@ -244,6 +244,8 @@ type DockerGrader(options: GraderOptions, submissionData: SubmissionData) =
                 let proc = createRunContainerProcess containerName submissionData.options.dockerImage dockerOptions
                 drainProcessOutputToLog "TRIKStudio" proc
                 proc.Start() |> ignore
+                proc.BeginOutputReadLine()
+                proc.BeginErrorReadLine()
                 do! proc.WaitForExitAsync(token)
                 if proc.ExitCode = 0 then
                     let result =
