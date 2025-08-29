@@ -78,8 +78,9 @@ let rec private writeTmpFile dir (f: InMemoryFile) =
     let path = $"{dir}/{f.name}"
     Logging.logDebug tag $"Writing tmp file: path={path}, size={f.content.Length}"
     assert Directory.Exists(dir)
-    let stream = File.Create(path)
+    use stream = File.Create(path)
     stream.Write(f.content)
+    stream.Flush(flushToDisk = true)
 
 type DockerGrader(options: GraderOptions, submissionData: SubmissionData) =
 
