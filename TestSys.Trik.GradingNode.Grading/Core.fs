@@ -33,7 +33,7 @@ type Submission =
     | JavaScriptSubmission of InMemoryFile
 
 type SubmissionData = {
-    id: int
+    id: int64
     task: Task
     options: GradingOptions
     submission: Submission
@@ -53,7 +53,7 @@ type GradingError =
     | UnsupportedImageVersion of string
 
 type GradingResult = {
-    id: int
+    id: int64
     result: Result<FieldResult list, GradingError>
 }
 

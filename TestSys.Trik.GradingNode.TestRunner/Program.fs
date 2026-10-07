@@ -152,7 +152,7 @@ let runTests (testCases: TestCase seq) (client: GradingNode.GradingNodeClient) =
     let tokenSource = new CancellationTokenSource()
     let token = tokenSource.Token
 
-    let tests = System.Collections.Generic.Dictionary<int, TestCase>()
+    let tests = System.Collections.Generic.Dictionary<int64, TestCase>()
 
     let handleResult (result: Core.GradingResult) =
         match tests.TryGetValue(result.id) with
@@ -191,7 +191,7 @@ let runTests (testCases: TestCase seq) (client: GradingNode.GradingNodeClient) =
             dockerImage = Prelude.Configuration.varFromEnv "TRIK_STUDIO_IMAGE"
         }: Core.GradingOptions
 
-    let sendSubmission (submissionId: int) (testCase: TestCase) =
+    let sendSubmission (submissionId: int64) (testCase: TestCase) =
         task {
             let data: Core.SubmissionData = 
                 {
@@ -207,9 +207,9 @@ let runTests (testCases: TestCase seq) (client: GradingNode.GradingNodeClient) =
     let tasks = 
         testCases
         |> Seq.mapi ( fun i testCase -> 
-            tests.Add(i, testCase)
+            tests.Add(int64 i, testCase)
             log $"Sent submission[{i}]"
-            sendSubmission i testCase
+            sendSubmission (int64 i) testCase
         )
 
     task {
