@@ -71,7 +71,7 @@ type Proto.Submission with
             | Proto.Submission.SubmissionOneofCase.VisualLanguageSubmission -> this.VisualLanguageSubmission.ToSubmission()
             | Proto.Submission.SubmissionOneofCase.PythonSubmission -> this.PythonSubmission.ToSubmission()
             | Proto.Submission.SubmissionOneofCase.JavascriptSubmission -> this.JavascriptSubmission.ToSubmission()
-            | _ -> failwith "Unexpected value"
+            | submissionCase -> failwith $"Submission {this.Id} has no supported solution: {submissionCase}"
         {
             id = this.Id
             task = this.Task.ToGradingTask()
@@ -134,7 +134,7 @@ type Proto.ErrorResult with
         | 4 -> InnerTimeoutExceed
         | 5 -> UnsupportedImageVersion ""
         | 6 -> InvalidSubmission ""
-        | _ -> failwith "TODO"
+        | kind -> failwith $"Unknown grading error kind: {kind}"
 
     static member FromGradingError (e: GradingError) =
         let result = Proto.ErrorResult()
@@ -180,7 +180,7 @@ type Proto.Result with
                 Ok <| this.Ok.ToFieldResults()
             | Proto.Result.ResultOneofCase.Error ->
                 Error <| this.Error.ToGradingError()
-            | _ -> failwith "U"
+            | resultCase -> failwith $"Result {this.Id} has no ok or error value: {resultCase}"
         {
             id = this.Id
             result = result
