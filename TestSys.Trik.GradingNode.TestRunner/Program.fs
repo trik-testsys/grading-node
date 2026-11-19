@@ -10,10 +10,14 @@ open TestSys.Trik.GradingNode
 open TestSys.Trik.GradingNode.Proto
 
 
+type Expected =
+    | Scores of (string * int option) seq
+    | ExitCode of int
+
 type TestCase = {
     task: Core.Task
     submission: Core.Submission
-    expected: (string * int option) seq
+    expected: Expected
 }
 
 let log msg = Prelude.Logging.logInfo "Tests" msg
@@ -113,12 +117,40 @@ let getTestCases (path: string) =
             |> fun x -> { fields = x }: Core.Task
 
         submissionsWithExpected
-        |> Seq.map (fun (s, e) -> { task = task; submission = s; expected = e})
+        |> Seq.map (fun (s, e) -> { task = task; submission = s; expected = Scores e })
 
     ensureExists "tasks" path
     |> Directory.GetDirectories
     |> Seq.map parseTask
     |> Seq.concat
+
+let getFailureCases (path: string) =
+
+    let defaultFieldsPath = Path.Combine(path, "..", "examples", "straight_line", "fields")
+
+    let readFields fieldsPath =
+        fieldsPath
+        |> Directory.GetFiles
+        |> Seq.map Core.InMemoryFile.FromFile
+        |> List.ofSeq
+        |> fun x -> { fields = x }: Core.Task
+
+    let parseCase casePath =
+        let caseFieldsPath = Path.Combine(casePath, "fields")
+        let fieldsPath = if Directory.Exists caseFieldsPath then caseFieldsPath else defaultFieldsPath
+        let exitCode = File.ReadAllText(Path.Combine(casePath, "expected_exit_code.txt")).Trim() |> int
+        let submission =
+            Path.Combine(casePath, "submission.qrs")
+            |> Core.InMemoryFile.FromFile
+            |> Core.VisualLanguageSubmission
+        { task = readFields fieldsPath; submission = submission; expected = ExitCode exitCode }
+
+    if not <| Directory.Exists path then
+        failwith $"failures directory not exists: {path}"
+    path
+    |> Directory.GetDirectories
+    |> Seq.sort
+    |> Seq.map parseCase
 
 let parseResultFile (file: Core.InMemoryFile) =
     let text = System.Text.Encoding.UTF8.GetString file.content
@@ -154,35 +186,54 @@ let runTests (testCases: TestCase seq) (client: GradingNode.GradingNodeClient) =
 
     let tests = System.Collections.Generic.Dictionary<int64, TestCase>()
 
-    let handleResult (result: Core.GradingResult) =
-        match tests.TryGetValue(result.id) with
-        | true, { task = _; submission = _; expected = expected } ->
-            tests.Remove result.id |> ignore
-            match result.result with
-            | Ok fieldResults ->
-                let expected = Set expected
-                let actual =
-                    fieldResults
-                    |> Seq.map (fun x -> x.name, parseResultFile x.verdictFile)
-                    |> Set
-                let diff = Set.difference actual expected
-                if not <| Seq.isEmpty diff then
-                    logFail result.id "Results not matched:"
-                    log "Expected:"
-                    for name, r in Seq.sortBy fst expected do
-                        log $"  {name} -> {r}"
-                    log "Actual:"
-                    for name, r in Seq.sortBy fst actual do
-                        log $"  {name} -> {r}"
-                    fail ()
-                else
-                    logPass result.id
-            | Error errorValue ->
-                logFail result.id $"Unexpected error: {errorValue}"
+    let assertScores (result: Core.GradingResult) expected =
+        match result.result with
+        | Ok fieldResults ->
+            let expected = Set expected
+            let actual =
+                fieldResults
+                |> Seq.map (fun x -> x.name, parseResultFile x.verdictFile)
+                |> Set
+            let diff = Set.difference actual expected
+            if not <| Seq.isEmpty diff then
+                logFail result.id "Results not matched:"
+                log "Expected:"
+                for name, r in Seq.sortBy fst expected do
+                    log $"  {name} -> {r}"
+                log "Actual:"
+                for name, r in Seq.sortBy fst actual do
+                    log $"  {name} -> {r}"
                 fail ()
+            else
+                logPass result.id
+        | Error errorValue ->
+            logFail result.id $"Unexpected error: {errorValue}"
+            fail ()
+
+    // Compared as sent over gRPC: the kind and the description keep the exit code that the transformed error loses.
+    let assertExitCodeError (result: Proto.Result) exitCode =
+        let expected = Proto.ErrorResult.FromGradingError(Core.GradingError.FromExitCode exitCode)
+        match result.ResultCase with
+        | Proto.Result.ResultOneofCase.Error
+            when result.Error.Kind = expected.Kind && result.Error.Description = expected.Description ->
+            logPass result.Id
+        | Proto.Result.ResultOneofCase.Error ->
+            logFail result.Id $"Expected error[{expected.Kind}: {expected.Description}], got error[{result.Error.Kind}: {result.Error.Description}]"
+            fail ()
+        | resultCase ->
+            logFail result.Id $"Expected error[{expected.Kind}: {expected.Description}], got {resultCase}"
+            fail ()
+
+    let handleResult (result: Proto.Result) =
+        match tests.TryGetValue(result.Id) with
+        | true, testCase ->
+            tests.Remove result.Id |> ignore
+            match testCase.expected with
+            | Scores expected -> assertScores (result.ToGradingResult()) expected
+            | ExitCode exitCode -> assertExitCodeError result exitCode
         | false, _ ->
             fail ()
-            logFail result.id "Unexpected submission id"
+            logFail result.Id "Unexpected submission id"
 
 
     let options =
@@ -201,7 +252,7 @@ let runTests (testCases: TestCase seq) (client: GradingNode.GradingNodeClient) =
                     submission = testCase.submission 
                 }
             let! result = client.GradeAsync (Proto.Submission.FromSubmissionData(data))
-            handleResult <| result.ToGradingResult()
+            handleResult result
         }
 
     let tasks = 
@@ -224,7 +275,9 @@ let runTests (testCases: TestCase seq) (client: GradingNode.GradingNodeClient) =
 [<EntryPoint>]
 let main _ =
     setupLogger ()
-    let testCases = getTestCases <| Prelude.Configuration.varFromEnv "EXAMPLES_DIRECTORY"
+    let examples = getTestCases <| Prelude.Configuration.varFromEnv "EXAMPLES_DIRECTORY"
+    let failures = getFailureCases <| Prelude.Configuration.varFromEnv "FAILURES_DIRECTORY"
+    let testCases = Seq.append examples failures |> List.ofSeq
     let client = createClient ()
     let failedTask = runTests testCases client
     let failed = failedTask.Result

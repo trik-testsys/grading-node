@@ -51,6 +51,18 @@ type GradingError =
     | MismatchedFiles
     | InnerTimeoutExceed
     | UnsupportedImageVersion of string
+    | InvalidSubmission of reason: string
+with
+    /// Error of a grading container that finished with a non-zero exit code of grade.sh in the grading image.
+    static member FromExitCode (exitCode: int) =
+        match exitCode with
+        // 2D-model crashed on the submission, for example a project without a diagram
+        | 4 -> InvalidSubmission "2D-model crashed"
+        // patcher crashed opening the submission, for example a file that is not a TRIK Studio project
+        | 5 -> InvalidSubmission "patcher cannot open it"
+        // 1: unexpected mode or fields; 3: patcher failed on a field or on the image files;
+        // 125-127: docker could not start the container
+        | code -> NonZeroExitCode code
 
 type GradingResult = {
     id: int64
@@ -260,7 +272,7 @@ type DockerGrader(options: GraderOptions, submissionData: SubmissionData) =
                     return result
                 else
                     logInfo submissionId $"finished grading, non-zero exit code: {proc.ExitCode}"
-                    return err <| NonZeroExitCode proc.ExitCode
+                    return err <| GradingError.FromExitCode proc.ExitCode
             with
                 | :? OperationCanceledException ->
                     logInfo submissionId "finished grading, inner timeout exceed"
