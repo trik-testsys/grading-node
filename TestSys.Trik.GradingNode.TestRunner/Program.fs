@@ -276,10 +276,7 @@ let runTests (testCases: TestCase seq) (client: GradingNode.GradingNodeClient) =
 let main _ =
     setupLogger ()
     let examples = getTestCases <| Prelude.Configuration.varFromEnv "EXAMPLES_DIRECTORY"
-    let failures =
-        match System.Environment.GetEnvironmentVariable "FAILURES_DIRECTORY" with
-        | null | "" -> Seq.empty
-        | path -> getFailureCases path
+    let failures = getFailureCases <| Prelude.Configuration.varFromEnv "FAILURES_DIRECTORY"
     let testCases = Seq.append examples failures |> List.ofSeq
     let client = createClient ()
     let failedTask = runTests testCases client
