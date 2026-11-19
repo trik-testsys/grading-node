@@ -24,16 +24,14 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Build image
-        run: docker build .
+        run: |
+          VERSION_TAG="${GITHUB_REF#refs/tags/v}"
+          BASE_NAME="$USERNAME/grading-node"
+          echo "CURRENT_TAG=$BASE_NAME:$VERSION_TAG" >> "$GITHUB_ENV"
+          echo "LATEST_TAG=$BASE_NAME:latest" >> "$GITHUB_ENV"
+          docker build --tag "$BASE_NAME:$VERSION_TAG" --tag "$BASE_NAME:latest" .
 
       - name: Push tagged image to docker.io
         run: |
-          CURRENT_NAME="$(docker images -q | head -n 1)"
-          VERSION_TAG="${GITHUB_REF:11}"
-          BASE_NAME="$USERNAME/grading-node"
-          CURRENT_TAG="$BASE_NAME:$VERSION_TAG"
-          LATEST_TAG="$BASE_NAME:latest"
-          docker tag "$CURRENT_NAME" "$CURRENT_TAG"
-          docker tag "$CURRENT_NAME" "$LATEST_TAG"
           docker push "$CURRENT_TAG"
           docker push "$LATEST_TAG"
