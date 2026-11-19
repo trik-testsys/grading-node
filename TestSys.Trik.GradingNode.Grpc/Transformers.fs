@@ -133,6 +133,7 @@ type Proto.ErrorResult with
         | 3 -> MismatchedFiles
         | 4 -> InnerTimeoutExceed
         | 5 -> UnsupportedImageVersion ""
+        | 6 -> InvalidSubmission ""
         | _ -> failwith "TODO"
 
     static member FromGradingError (e: GradingError) =
@@ -149,6 +150,8 @@ type Proto.ErrorResult with
                 4, "Inner timeout exceed"
             | UnsupportedImageVersion _ ->
                 5, "Unsupported image version"
+            | InvalidSubmission reason ->
+                6, $"Submission cannot be run by TRIK Studio: {reason}"
         result.Kind <- kind
         result.Description <- description
         result
